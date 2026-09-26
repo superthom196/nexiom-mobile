@@ -1,0 +1,32 @@
+*.iml
+.DS_Store
+.gradle/
+.idea/
+.kotlin/
+build/
+local.properties
+dist/
+*.apk
+*.aab
+*.jks
+*.keystore
+*.p12
+signing.properties
+
+# Xcode (iPhone app)
+xcuserdata/
+DerivedData/
+*.xcuserstate
+.build/
+*.ipa
+*.mobileprovision
+
+# Local agent and tooling state
+.claude/
+.codex/
+.mcp.json
+.vscode/
+AGENTS.md
+FABLE_PROMPT.md
+.repowise/
+graphify-out/
