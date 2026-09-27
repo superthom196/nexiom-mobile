@@ -73,3 +73,52 @@ data class Dashboard(
 
 @Serializable
 internal data class ApiError(val error: String = "")
+
+/** `POST /api/homeassistant`: where Home Assistant is, and a long-lived token of this phone's own. */
+@Serializable
+data class HomeAssistantAccess(val url: String, val token: String)
+
+/**
+ * An official app Set up this phone lists: `server` and `login` are the values it takes (null when
+ * it takes none or the box doesn't have one yet); `tailnet` is Tailscale's network, once connected.
+ */
+@Serializable
+data class SetupApp(
+    val id: String,
+    val name: String,
+    val server: String? = null,
+    val login: String? = null,
+    val tailnet: String? = null,
+)
+
+@Serializable
+internal data class PhoneSetup(val apps: List<SetupApp> = emptyList())
+
+/** A mounted drive the box can write to. */
+@Serializable
+data class Drive(val device: String, val name: String)
+
+@Serializable
+internal data class Drives(val drives: List<Drive> = emptyList())
+
+@Serializable
+data class FolderRef(val name: String, val path: String)
+
+/**
+ * A folder on a drive: its subfolders, and as `frozen` why files can't go here (or null).
+ * `files` are the names already here, when the box lists them.
+ */
+@Serializable
+data class FolderView(
+    val device: String,
+    val drive: String,
+    val path: String = "",
+    val parent: String = "",
+    val frozen: String? = null,
+    val folders: List<FolderRef> = emptyList(),
+    val files: List<String>? = null,
+)
+
+/** `POST /api/upload`: saved, or skipped because a file of that name is already there. */
+@Serializable
+data class UploadAnswer(val saved: Boolean = false, val skipped: Boolean = false)

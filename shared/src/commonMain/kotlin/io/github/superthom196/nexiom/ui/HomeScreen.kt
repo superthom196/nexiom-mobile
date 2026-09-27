@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.superthom196.nexiom.AppModel
@@ -83,6 +84,7 @@ import io.github.superthom196.nexiom.resources.ring_cpu
 import io.github.superthom196.nexiom.resources.ring_disk
 import io.github.superthom196.nexiom.resources.ring_ram
 import io.github.superthom196.nexiom.resources.settings
+import io.github.superthom196.nexiom.resources.setup_title
 import io.github.superthom196.nexiom.resources.sign_out
 import io.github.superthom196.nexiom.resources.status_blocked
 import io.github.superthom196.nexiom.resources.status_services
@@ -106,6 +108,11 @@ fun HomeScreen(model: AppModel) {
     LaunchedEffect(lifecycle, model.attempt) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { model.follow() }
     }
+    // Back from the app store, an app may have turned up.
+    LifecycleResumeEffect(Unit) {
+        model.checkInstalled()
+        onPauseOrDispose {}
+    }
     val settingsTitle = stringResource(Res.string.settings)
     var menu by remember { mutableStateOf(false) }
 
@@ -122,6 +129,15 @@ fun HomeScreen(model: AppModel) {
                             Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(Res.string.more_options))
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            if (model.setupApps.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(Res.string.setup_title)) },
+                                    onClick = {
+                                        menu = false
+                                        model.openSetup()
+                                    },
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.sign_out)) },
                                 onClick = {
@@ -175,6 +191,11 @@ private fun Dashboard(dashboard: Dashboard, model: AppModel, modifier: Modifier)
         if (dashboard.attention.isNotEmpty()) {
             item(key = "attention") { AttentionBanner(dashboard.attention, onClick = { showAttention = true }) }
         }
+        val setupDone = model.setupApps.count { it.id in model.installed }
+        if (setupDone < model.setupApps.size) {
+            item(key = "setup") { SetupCard(setupDone, model.setupApps.size, onClick = model::openSetup) }
+        }
+        item(key = "scenes") { ScenesBlock(model) }
         item(key = "status") { StatusStrip(dashboard.status) }
         dashboard.sections.forEach { section ->
             item(key = "section:${section.key}") { SectionHeader(section) }

@@ -27,8 +27,20 @@ interface Platform {
     /** The boxes on this network as they come and go, over mDNS. */
     fun discover(): Flow<List<FoundBox>>
 
-    /** Opens the service's official app when the phone has it; false when it doesn't. */
+    /** Opens a tile's official app when the phone has it; false when it doesn't. */
     fun openOfficialApp(serviceId: String): Boolean
 
+    /** Whether the official app of a Set up this phone step (`tailscale`, `bitwarden`, …) is on the phone. */
+    fun appInstalled(appId: String): Boolean
+
+    /** Opens that step's app; false when the phone doesn't have it. */
+    fun openApp(appId: String): Boolean
+
+    /** That step's app in the phone's app store. */
+    fun openStore(appId: String)
+
     fun openInBrowser(url: String)
+
+    /** Puts `text` on the clipboard. */
+    fun copy(text: String)
 }

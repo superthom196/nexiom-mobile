@@ -52,4 +52,61 @@
     <!-- Web pages -->
     <string name="close">Close</string>
     <string name="web_failed">This page didn\'t load.</string>
+    <!-- Scenes -->
+    <string name="scenes_title">Scenes</string>
+    <string name="scenes_edit">Edit</string>
+    <string name="scenes_choose_title">Choose scenes</string>
+    <string name="scenes_choose_body">Pick the Home Assistant scenes this phone shows here.</string>
+    <string name="scenes_failed">Can\'t reach Home Assistant.</string>
+    <string name="scenes_none">Home Assistant has no scenes yet. Make some in the Home Assistant app.</string>
+    <string name="scene_failed">Didn\'t run. Try again.</string>
+    <string name="edit_scenes_title">Scenes on this phone</string>
+    <string name="edit_scenes_chosen">On this phone. Drag to change the order.</string>
+    <string name="edit_scenes_others">Other scenes</string>
+    <string name="reorder">Move</string>
+
+    <!-- Set up this phone -->
+    <string name="setup_title">Set up this phone</string>
+    <string name="setup_progress">%1$d of %2$d done</string>
+    <string name="setup_body">Install each app, then sign in with the values shown here.</string>
+    <string name="setup_install">Install</string>
+    <string name="setup_open">Open</string>
+    <string name="setup_installed">Installed</string>
+    <string name="setup_server">Server</string>
+    <string name="setup_login">Sign in as</string>
+    <string name="setup_network">Network</string>
+    <string name="setup_copy">Copy</string>
+    <string name="setup_copied">Copied</string>
+    <string name="setup_for_tailscale">Reaches your Nexiom away from home. Sign in with the account your box\'s network uses.</string>
+    <string name="setup_for_bitwarden">Passwords. Choose a self-hosted server, enter the address below, then make your own account. Its master password is yours alone and can\'t be reset.</string>
+    <string name="setup_for_homeassistant">Home control beyond scenes. Sign in with the household password.</string>
+    <string name="setup_for_music_assistant">Music on this phone and the house\'s speakers. Sign in with the household password.</string>
+    <string name="setup_for_immich">Backs up this phone\'s photos. Sign in with the household password.</string>
+    <string name="setup_passwords_off">Turn on Passwords in Settings first.</string>
+
+    <!-- Share to Nexiom -->
+    <string name="share_title">Send to Nexiom</string>
+    <string name="share_count">%1$d files</string>
+    <string name="share_send_here">Send here</string>
+    <string name="share_drives">Drives</string>
+    <string name="share_no_drives">No drive can take files right now. Plug one in, or check Drives in Settings.</string>
+    <string name="share_empty_folder">No folders here.</string>
+    <string name="share_signed_out">Sign in to Nexiom first, then share again.</string>
+    <string name="share_open_app">Open Nexiom</string>
+    <string name="share_nothing">There\'s nothing here Nexiom can send.</string>
+    <string name="share_sending_toast">Sending to %1$s</string>
+    <string name="up">Up</string>
+
+    <!-- Uploads (notifications) -->
+    <string name="upload_channel">Sending files</string>
+    <string name="upload_sending">Sending to %1$s</string>
+    <string name="upload_file">%1$s (%2$d of %3$d)</string>
+    <string name="upload_done_one">Sent %1$s to %2$s</string>
+    <string name="upload_done">Sent %1$d files to %2$s</string>
+    <string name="upload_partly">Sent %1$d of %2$d files to %3$s</string>
+    <string name="upload_failed">Couldn\'t send to %1$s</string>
+    <string name="upload_why">%1$s: %2$s</string>
+    <string name="upload_signed_out">Sign in to Nexiom, then share again.</string>
+    <string name="upload_unreachable">Can\'t reach your Nexiom.</string>
+    <string name="upload_unreadable">The phone wouldn\'t hand the file over.</string>
 </resources>

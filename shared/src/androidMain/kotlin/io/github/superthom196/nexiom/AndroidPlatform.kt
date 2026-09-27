@@ -1,6 +1,8 @@
 package io.github.superthom196.nexiom
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -99,35 +101,60 @@ class AndroidPlatform(private val context: Context) : Platform {
             )
         }
 
-    override fun openOfficialApp(serviceId: String): Boolean {
-        val intent = OFFICIAL_APPS[serviceId].orEmpty()
-            .firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) }
-            ?: return false
-        return try {
-            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            true
-        } catch (_: ActivityNotFoundException) {
-            false
-        }
+    override fun openOfficialApp(serviceId: String): Boolean =
+        SERVICE_APPS[serviceId]?.let(::openApp) ?: false
+
+    override fun appInstalled(appId: String): Boolean = launchIntent(appId) != null
+
+    override fun openApp(appId: String): Boolean {
+        val intent = launchIntent(appId) ?: return false
+        return start(intent)
+    }
+
+    /** The Play Store's page for it, or the web page when the phone has no store. */
+    override fun openStore(appId: String) {
+        val pkg = PACKAGES[appId]?.first() ?: return
+        start(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg"))) ||
+            start(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$pkg")))
+    }
+
+    override fun copy(text: String) {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText(text, text))
+    }
+
+    private fun launchIntent(appId: String): Intent? =
+        PACKAGES[appId].orEmpty().firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) }
+
+    private fun start(intent: Intent): Boolean = try {
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
     }
 
     override fun openInBrowser(url: String) {
-        try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        } catch (_: ActivityNotFoundException) {
-            // No browser on the phone: nothing to open it with.
-        }
+        start(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
     private companion object {
         const val SERVICE_TYPE = "_nexiom._tcp"
 
-        /** A tile's service id to the official app that opens it, in order of preference. */
-        val OFFICIAL_APPS = mapOf(
-            "immich" to listOf("app.alextran.immich"),
-            "vaultwarden" to listOf("com.x8bit.bitwarden"),
+        /** A Set up this phone step's app to its packages, in order of preference (the manifest's <queries>). */
+        val PACKAGES = mapOf(
+            "tailscale" to listOf("com.tailscale.ipn"),
+            "bitwarden" to listOf("com.x8bit.bitwarden"),
             "homeassistant" to listOf("io.homeassistant.companion.android", "io.homeassistant.companion.android.minimal"),
             "music-assistant" to listOf("io.music_assistant.client"),
+            "immich" to listOf("app.alextran.immich"),
+        )
+
+        /** A tile's service to the app that opens it. */
+        val SERVICE_APPS = mapOf(
+            "vaultwarden" to "bitwarden",
+            "homeassistant" to "homeassistant",
+            "music-assistant" to "music-assistant",
+            "immich" to "immich",
         )
     }
 }

@@ -5,9 +5,11 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.onUpload
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.prepareGet
 import io.ktor.client.request.setBody
@@ -16,10 +18,12 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.Url
+import io.ktor.http.content.OutgoingContent
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLParameter
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.utils.io.readUTF8Line
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.readLine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.serialization.SerializationException
@@ -81,6 +85,55 @@ class NexiomApi(private val client: HttpClient, private val base: String = BASE_
     suspend fun dashboard(token: String): Dashboard =
         request(authed = true) { client.get("$base/api/dashboard") { bearerAuth(token) } }
 
+    suspend fun phoneSetup(token: String): List<SetupApp> =
+        request<PhoneSetup>(authed = true) { client.get("$base/api/phone-setup") { bearerAuth(token) } }.apps
+
+    /** A new Home Assistant token for this phone, replacing its earlier one; 404 without Home Assistant. */
+    suspend fun homeAssistant(token: String): HomeAssistantAccess =
+        request(authed = true) { client.post("$base/api/homeassistant") { bearerAuth(token) } }
+
+    suspend fun drives(token: String): List<Drive> =
+        request<Drives>(authed = true) { client.get("$base/api/folders") { bearerAuth(token) } }.drives
+
+    suspend fun folder(token: String, device: String, path: String): FolderView =
+        request(authed = true) {
+            client.get("$base/api/folders") {
+                bearerAuth(token)
+                parameter("device", device)
+                parameter("path", path)
+            }
+        }
+
+    /** Sends `size` bytes from `open()` as `name` in that folder, reporting bytes sent. */
+    suspend fun upload(
+        token: String,
+        device: String,
+        path: String,
+        name: String,
+        size: Long?,
+        open: () -> ByteReadChannel,
+        progress: (sent: Long) -> Unit = {},
+    ): UploadAnswer = request(authed = true) {
+        client.post("$base/api/upload") {
+            bearerAuth(token)
+            parameter("device", device)
+            parameter("path", path)
+            parameter("name", name)
+            timeout {
+                requestTimeoutMillis = Long.MAX_VALUE
+                socketTimeoutMillis = 60_000
+            }
+            onUpload { sent, _ -> progress(sent) }
+            setBody(
+                object : OutgoingContent.ReadChannelContent() {
+                    override val contentLength = size
+                    override val contentType = ContentType.Application.OctetStream
+                    override fun readFrom() = open()
+                },
+            )
+        }
+    }
+
     /**
      * The live status while the dashboard is on screen. The box sends only changes, so the
      * stream can be quiet for a long time; it ends with [SignedOut] when the phone is signed out.
@@ -102,7 +155,7 @@ class NexiomApi(private val client: HttpClient, private val base: String = BASE_
                 val body = response.bodyAsChannel()
                 val events = EventReader()
                 while (true) {
-                    val line = body.readUTF8Line() ?: break
+                    val line = body.readLine() ?: break
                     val event = events.line(line) ?: continue
                     if (event.first == "status") send(NexiomJson.decodeFromString<Live>(event.second))
                 }

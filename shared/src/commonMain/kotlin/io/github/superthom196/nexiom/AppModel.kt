@@ -2,25 +2,30 @@ package io.github.superthom196.nexiom
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.superthom196.nexiom.api.ApiException
 import io.github.superthom196.nexiom.api.Dashboard
+import io.github.superthom196.nexiom.api.HomeAssistant
 import io.github.superthom196.nexiom.api.NexiomApi
 import io.github.superthom196.nexiom.api.NotSetUp
 import io.github.superthom196.nexiom.api.Refused
+import io.github.superthom196.nexiom.api.Scene
+import io.github.superthom196.nexiom.api.SetupApp
 import io.github.superthom196.nexiom.api.SignedOut
 import io.github.superthom196.nexiom.api.Tile
-import io.github.superthom196.nexiom.api.Unreachable
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 
 sealed interface Screen {
     data object Find : Screen
@@ -49,16 +54,32 @@ sealed interface SignInProblem {
 /** A web page open inside the app; `headers` go with its first request only. */
 data class WebPage(val title: String, val url: String, val headers: Map<String, String>)
 
+/** A screen over the dashboard; closing it goes back to the one under it. */
+sealed interface Overlay {
+    data class Web(val page: WebPage) : Overlay
+    data object Setup : Overlay
+    data object EditScenes : Overlay
+}
+
+sealed interface ScenesState {
+    /** The box has no Home Assistant, so the dashboard shows no scenes. */
+    data object Off : ScenesState
+    data object Loading : ScenesState
+    data class Ready(val all: List<Scene>) : ScenesState
+    data object Failed : ScenesState
+}
+
+enum class SceneRun { Running, Done, Failed }
+
 class AppModel(private val platform: Platform, private val client: HttpClient) : ViewModel() {
     private val api = NexiomApi(client)
+    private val homeAssistant = HomeAssistant(client, api, platform.store)
     private val sessions = SessionStore(platform.store)
     private var session: Session? = sessions.load()
 
     var screen by mutableStateOf(startScreen())
         private set
     var home by mutableStateOf<HomeState>(HomeState.Loading)
-        private set
-    var web by mutableStateOf<WebPage?>(null)
         private set
     var signingIn by mutableStateOf(false)
         private set
@@ -68,6 +89,27 @@ class AppModel(private val platform: Platform, private val client: HttpClient) :
     /** Bumped by Try again, so the dashboard starts following the box afresh. */
     var attempt by mutableIntStateOf(0)
         private set
+
+    private var overlays by mutableStateOf(emptyList<Overlay>())
+    val overlay: Overlay? get() = overlays.lastOrNull()
+    val web: WebPage? get() = (overlay as? Overlay.Web)?.page
+
+    var scenes by mutableStateOf<ScenesState>(ScenesState.Off)
+        private set
+
+    /** This phone's chosen scenes, in its order; kept on the phone. */
+    var favourites by mutableStateOf(loadFavourites())
+        private set
+    val sceneRuns = mutableStateMapOf<String, SceneRun>()
+
+    var setupApps by mutableStateOf(emptyList<SetupApp>())
+        private set
+
+    /** The ids of the setup apps on the phone, as of the last [checkInstalled]. */
+    var installed by mutableStateOf(emptySet<String>())
+        private set
+
+    private var extras: Job? = null
 
     val household: String get() = session?.household.orEmpty()
 
@@ -105,6 +147,7 @@ class AppModel(private val platform: Platform, private val client: HttpClient) :
 
     fun findAgain() {
         save(null)
+        forgetBox()
         signInProblem = null
         screen = Screen.Find
     }
@@ -142,7 +185,7 @@ class AppModel(private val platform: Platform, private val client: HttpClient) :
     fun signOut() {
         val token = session?.token
         save(null)
-        web = null
+        forgetBox()
         home = HomeState.Loading
         screen = Screen.Find
         if (token != null) {
@@ -159,9 +202,25 @@ class AppModel(private val platform: Platform, private val client: HttpClient) :
     private fun signedOut() {
         val s = session ?: return
         save(s.copy(token = null, phoneId = null))
-        web = null
+        leaveDashboard()
         home = HomeState.Loading
         screen = Screen.SignIn(s.boxId, s.household, signedOut = true)
+    }
+
+    /** What belongs to this sign-in: Home Assistant's token, the overlays, what the box listed. */
+    private fun leaveDashboard() {
+        extras?.cancel()
+        homeAssistant.forget()
+        overlays = emptyList()
+        scenes = ScenesState.Off
+        sceneRuns.clear()
+        setupApps = emptyList()
+    }
+
+    /** Leaving this box altogether: its scenes mean nothing on another. */
+    private fun forgetBox() {
+        leaveDashboard()
+        saveFavourites(emptyList())
     }
 
     // --- Dashboard -----------------------------------------------------------------
@@ -207,7 +266,18 @@ class AppModel(private val platform: Platform, private val client: HttpClient) :
             save(s.copy(household = dashboard.box.household))
         }
         home = HomeState.Ready(dashboard)
+        loadExtras(token, dashboard)
         return true
+    }
+
+    /** Set up this phone's list and the scenes, beside the dashboard rather than holding it up. */
+    private fun loadExtras(token: String, dashboard: Dashboard) {
+        val hasHomeAssistant = dashboard.sections.any { section -> section.tiles.any { it.id == HOME_ASSISTANT } }
+        extras?.cancel()
+        extras = viewModelScope.launch {
+            launch { loadSetup(token) }
+            launch { loadScenes(token, hasHomeAssistant) }
+        }
     }
 
     fun retry() {
@@ -225,16 +295,114 @@ class AppModel(private val platform: Platform, private val client: HttpClient) :
     /** Pages on nexiom.home open signed in, through `/api/web`; others (the tailnet's) as they are. */
     fun openWeb(title: String, link: String) {
         val token = session?.token ?: return
-        web = if (NexiomApi.isNexiomAddress(link)) {
+        val page = if (NexiomApi.isNexiomAddress(link)) {
             WebPage(title, api.webUrl(link), mapOf("Authorization" to "Bearer $token"))
         } else {
             WebPage(title, link, emptyMap())
         }
+        overlays = overlays + Overlay.Web(page)
     }
 
-    fun closeWeb() {
-        web = null
+    fun openSetup() {
+        overlays = overlays + Overlay.Setup
     }
+
+    fun editScenes() {
+        overlays = overlays + Overlay.EditScenes
+    }
+
+    fun closeOverlay() {
+        overlays = overlays.dropLast(1)
+    }
+
+    // --- Scenes --------------------------------------------------------------------
+
+    private suspend fun loadScenes(token: String, hasHomeAssistant: Boolean) {
+        if (!hasHomeAssistant) {
+            scenes = ScenesState.Off
+            return
+        }
+        if (scenes !is ScenesState.Ready) scenes = ScenesState.Loading
+        scenes = try {
+            ScenesState.Ready(homeAssistant.scenes(token))
+        } catch (_: SignedOut) {
+            signedOut()
+            return
+        } catch (_: ApiException) {
+            // Keep the scenes already shown; Home Assistant may be restarting.
+            if (scenes is ScenesState.Ready) return
+            ScenesState.Failed
+        }
+    }
+
+    fun retryScenes() {
+        val token = session?.token ?: return
+        viewModelScope.launch { loadScenes(token, hasHomeAssistant = true) }
+    }
+
+    fun runScene(scene: Scene) {
+        val token = session?.token ?: return
+        if (sceneRuns[scene.id] == SceneRun.Running) return
+        sceneRuns[scene.id] = SceneRun.Running
+        viewModelScope.launch {
+            val result = try {
+                homeAssistant.run(token, scene.id)
+                SceneRun.Done
+            } catch (_: SignedOut) {
+                signedOut()
+                return@launch
+            } catch (_: ApiException) {
+                SceneRun.Failed
+            }
+            sceneRuns[scene.id] = result
+            delay(SCENE_FEEDBACK_MS)
+            if (sceneRuns[scene.id] == result) sceneRuns.remove(scene.id)
+        }
+    }
+
+    fun setFavourite(sceneId: String, chosen: Boolean) {
+        saveFavourites(if (chosen) (favourites - sceneId) + sceneId else favourites - sceneId)
+    }
+
+    fun moveFavourite(from: Int, to: Int) {
+        if (from !in favourites.indices || to !in favourites.indices) return
+        saveFavourites(favourites.toMutableList().apply { add(to, removeAt(from)) })
+    }
+
+    private fun loadFavourites(): List<String> =
+        platform.store.get(FAVOURITES)?.let { runCatching { Json.decodeFromString<List<String>>(it) }.getOrNull() }
+            .orEmpty()
+
+    private fun saveFavourites(ids: List<String>) {
+        favourites = ids
+        platform.store.set(FAVOURITES, if (ids.isEmpty()) null else Json.encodeToString(ids))
+    }
+
+    // --- Set up this phone -----------------------------------------------------------
+
+    private suspend fun loadSetup(token: String) {
+        try {
+            setupApps = api.phoneSetup(token)
+            checkInstalled()
+        } catch (_: SignedOut) {
+            signedOut()
+        } catch (_: ApiException) {
+            // Keep the list already shown.
+        }
+    }
+
+    /** Looks again at which setup apps the phone has, such as on coming back from the app store. */
+    fun checkInstalled() {
+        installed = setupApps.map { it.id }.filter(platform::appInstalled).toSet()
+    }
+
+    fun installApp(appId: String) = platform.openStore(appId)
+
+    fun openApp(appId: String) {
+        if (!platform.openApp(appId)) platform.openStore(appId)
+    }
+
+    fun copy(text: String) = platform.copy(text)
 
     private fun save(new: Session?) {
         session = new
@@ -248,5 +416,8 @@ class AppModel(private val platform: Platform, private val client: HttpClient) :
     private companion object {
         const val PROBE_EVERY_MS = 5_000L
         const val RECONNECT_AFTER_MS = 3_000L
+        const val SCENE_FEEDBACK_MS = 2_000L
+        const val HOME_ASSISTANT = "homeassistant"
+        const val FAVOURITES = "scenes"
     }
 }

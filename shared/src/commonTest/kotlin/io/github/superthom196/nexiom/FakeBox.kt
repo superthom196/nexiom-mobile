@@ -46,6 +46,16 @@ object Answers {
         ],
         $LIVE
     }"""
+
+    fun dashboardWithHomeAssistant() = """{
+        "box": ${box()},
+        "sections": [
+            {"key": "home", "title": "Home", "tiles": [
+                {"id": "homeassistant", "name": "Home Assistant", "description": "Your home", "link": "http://ha.nexiom.home/", "pillar": "home"}
+            ]}
+        ],
+        $LIVE
+    }"""
 }
 
 fun json(body: String, status: HttpStatusCode = HttpStatusCode.OK) =
@@ -90,5 +100,14 @@ class FakePlatform(
     override fun openOfficialApp(serviceId: String) = (serviceId in officialApps).also { if (it) opened += "app:$serviceId" }
     override fun openInBrowser(url: String) {
         opened += url
+    }
+    override fun appInstalled(appId: String) = appId in officialApps
+    override fun openApp(appId: String) = (appId in officialApps).also { if (it) opened += "app:$appId" }
+    override fun openStore(appId: String) {
+        opened += "store:$appId"
+    }
+    val copied = mutableListOf<String>()
+    override fun copy(text: String) {
+        copied += text
     }
 }

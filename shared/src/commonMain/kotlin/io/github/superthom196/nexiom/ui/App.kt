@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.superthom196.nexiom.AppModel
+import io.github.superthom196.nexiom.Overlay
 import io.github.superthom196.nexiom.Platform
 import io.github.superthom196.nexiom.Screen
 import io.github.superthom196.nexiom.WebPage
@@ -34,9 +35,11 @@ fun App(platform: Platform) {
                 Screen.Find -> FindScreen(model)
                 is Screen.NotSetUp -> NotSetUpScreen(model)
                 is Screen.SignIn -> SignInScreen(model, screen)
-                Screen.Home -> {
-                    val page = model.web
-                    if (page != null) WebScreen(page, onClose = model::closeWeb) else HomeScreen(model)
+                Screen.Home -> when (val overlay = model.overlay) {
+                    null -> HomeScreen(model)
+                    is Overlay.Web -> WebScreen(overlay.page, onClose = model::closeOverlay)
+                    Overlay.Setup -> SetupScreen(model)
+                    Overlay.EditScenes -> EditScenesScreen(model)
                 }
             }
         }
