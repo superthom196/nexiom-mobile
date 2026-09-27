@@ -7,9 +7,14 @@ fun numbered(name: String, n: Int): String {
     return if (dot <= 0) "$name ($n)" else "${name.substring(0, dot)} ($n)${name.substring(dot)}"
 }
 
-/** `name`, or the first numbered name not in `taken`, so a file of the same name is kept too. */
-fun freeName(name: String, taken: Set<String>): String =
-    generateSequence(1) { it + 1 }.map { numbered(name, it) }.first { it !in taken }
+/**
+ * `name`, or the first numbered name not in `taken`, so a file of the same name is kept too.
+ * Case doesn't count: on exFAT and NTFS drives Scan.pdf and scan.pdf are the same file.
+ */
+fun freeName(name: String, taken: Set<String>): String {
+    val lower = taken.mapTo(HashSet()) { it.lowercase() }
+    return generateSequence(1) { it + 1 }.map { numbered(name, it) }.first { it.lowercase() !in lower }
+}
 
 private const val BAD_CHARS = "/\\:*?\"<>|"
 private const val MAX_NAME_CHARS = 120

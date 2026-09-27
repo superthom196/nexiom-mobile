@@ -35,6 +35,12 @@ class NamesTest {
     }
 
     @Test
+    fun caseDoesntMakeANameFree() {
+        // exFAT and NTFS drives: Scan.pdf and scan.pdf are the same file.
+        assertEquals("Scan (3).pdf", freeName("Scan.pdf", setOf("scan.pdf", "SCAN (2).PDF")))
+    }
+
+    @Test
     fun namesAreMadeSafeForTheBox() {
         assertEquals("Scan_ 1_2.pdf", safeName("Scan: 1/2.pdf"))
         assertEquals("hidden", safeName(".hidden."))
@@ -66,6 +72,25 @@ class UploaderTest {
         assertEquals(listOf("scan (2).pdf", "scan (3).pdf"), sentAs)
         assertEquals(sentAs, result.sent)
         assertTrue(result.failed.isEmpty())
+    }
+
+    @Test
+    fun aFolderOfTheSameNameIsTakenToo() = runTest {
+        val sentAs = mutableListOf<String>()
+        val api = NexiomApi(
+            fakeClient { request ->
+                when (request.url.encodedPath) {
+                    "/api/folders" -> json(
+                        """{"device": "/dev/sdb1", "drive": "Big", "path": "Documents", "files": [],
+                            "folders": [{"name": "Taxes", "path": "Documents/Taxes"}]}""",
+                    )
+                    else -> json("""{"saved": true}""").also { sentAs += request.url.parameters["name"]!! }
+                }
+            },
+        )
+        Uploader(api).send("tok", to, listOf(file("taxes")))
+
+        assertEquals(listOf("taxes (2)"), sentAs)
     }
 
     @Test

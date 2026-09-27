@@ -16,8 +16,8 @@ data class UploadResult(val sent: List<String>, val failed: List<Pair<String, Ap
 class Uploader(private val api: NexiomApi) {
 
     /**
-     * Sends `files` to `to`. A name that's taken gets a number ("photo (2).jpg"): the folder's
-     * names are asked for first when the box lists them, and a file the box skips as already
+     * Sends `files` to `to`. A name that's taken, by a file or a folder and whatever its case, gets
+     * a number ("photo (2).jpg"): the folder's names are asked for first when the box lists them, and a file the box skips as already
      * there is sent again under the next number. A signed-out phone stops the batch.
      */
     suspend fun send(
@@ -26,8 +26,9 @@ class Uploader(private val api: NexiomApi) {
         files: List<Outgoing>,
         progress: (index: Int, sent: Long) -> Unit = { _, _ -> },
     ): UploadResult {
+        // The box skips any name already there, a file's or a folder's.
         val taken = try {
-            api.folder(token, to.device, to.path).files.orEmpty().toMutableSet()
+            api.folder(token, to.device, to.path).let { view -> (view.files.orEmpty() + view.folders.map { it.name }).toMutableSet() }
         } catch (_: SignedOut) {
             return UploadResult(emptyList(), files.map { it.name to SignedOut() })
         } catch (_: ApiException) {
