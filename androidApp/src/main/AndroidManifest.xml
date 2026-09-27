@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- The official apps a tile opens when the phone has them (see Tiles in the brief). -->
+    <queries>
+        <package android:name="app.alextran.immich" />
+        <package android:name="com.x8bit.bitwarden" />
+        <package android:name="io.homeassistant.companion.android" />
+        <package android:name="io.homeassistant.companion.android.minimal" />
+        <package android:name="io.music_assistant.client" />
+    </queries>
+
+    <!-- The box speaks plain HTTP at nexiom.home and its subdomains, on the home network or the tailnet. -->
+    <application
+        android:name=".NexiomApplication"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:enableOnBackInvokedCallback="true"
+        android:theme="@style/Theme.Nexiom">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -1,0 +1,12 @@
+<resources>
+    <!-- Only the window before Compose draws. DayNight so web pages get the phone's light or dark. -->
+    <style name="Theme.Nexiom" parent="android:Theme.DeviceDefault.DayNight">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/nexiom_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <color name="nexiom_bg">#F3F4F8</color>
+    <color name="nexiom_icon_bg">#141726</color>
+</resources>

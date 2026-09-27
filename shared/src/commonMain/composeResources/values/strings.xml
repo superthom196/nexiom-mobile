@@ -1,0 +1,55 @@
+<resources>
+    <!-- Every word the app shows, so translation needs no code changes (see the brief). -->
+
+    <!-- Find -->
+    <string name="find_title">Find your Nexiom</string>
+    <string name="find_looking">Looking on this network…</string>
+    <string name="find_none">No Nexiom found yet. Make sure this phone is on the home Wi-Fi and the box is on.</string>
+    <string name="find_not_set_up_badge">Not set up yet</string>
+    <string name="find_household_unnamed">Nexiom</string>
+
+    <!-- Not set up -->
+    <string name="not_set_up_title">This Nexiom isn\'t set up yet</string>
+    <string name="not_set_up_body">Finish the welcome screen in a browser first, then come back here to sign in.</string>
+    <string name="not_set_up_open">Open the welcome screen</string>
+    <string name="not_set_up_back">Back</string>
+
+    <!-- Sign in -->
+    <string name="sign_in_title">Sign in</string>
+    <string name="sign_in_body">Use your household name and password, the same as on nexiom.home.</string>
+    <string name="sign_in_household">Household name</string>
+    <string name="sign_in_password">Password</string>
+    <string name="sign_in_button">Sign in</string>
+    <string name="sign_in_other_box">Choose another Nexiom</string>
+    <string name="sign_in_signed_out">This phone was signed out. Sign in again with the household password.</string>
+    <string name="sign_in_wrong_box">A different Nexiom answered at nexiom.home. Is this phone on the right Wi-Fi?</string>
+    <string name="sign_in_unreachable">Can\'t reach nexiom.home from this phone. Is it on the home Wi-Fi?</string>
+    <string name="sign_in_not_set_up">This Nexiom isn\'t set up yet.</string>
+    <string name="show_password">Show password</string>
+    <string name="hide_password">Hide password</string>
+
+    <!-- Dashboard -->
+    <string name="settings">Settings</string>
+    <string name="more_options">More options</string>
+    <string name="sign_out">Sign out</string>
+    <string name="attention_title">Something needs attention</string>
+    <string name="attention_more">%1$s and %2$d more</string>
+    <string name="status_services">%1$d of %2$d services running</string>
+    <string name="status_storage">Storage %1$d%% full</string>
+    <string name="status_blocked">%1$s ads blocked in 24 hours</string>
+    <string name="ring_cpu">CPU</string>
+    <string name="ring_ram">RAM</string>
+    <string name="ring_disk">Disk</string>
+    <string name="percent">%1$d%%</string>
+
+    <!-- Can't reach -->
+    <string name="unreachable_title">Can\'t reach your Nexiom</string>
+    <string name="unreachable_body">Away from home, check that the Tailscale app is on. At home, check that the box is on.</string>
+    <string name="wrong_box_title">This isn\'t your Nexiom</string>
+    <string name="wrong_box_body">Another Nexiom answered at nexiom.home. Check that Tailscale is connected to your household\'s network.</string>
+    <string name="retry">Try again</string>
+
+    <!-- Web pages -->
+    <string name="close">Close</string>
+    <string name="web_failed">This page didn\'t load.</string>
+</resources>
