@@ -79,9 +79,9 @@
     <string name="setup_copied">Copied</string>
     <string name="setup_for_tailscale">Reaches your Nexiom away from home. Sign in with the account your box\'s network uses, then choose your Nexiom as the exit node.</string>
     <string name="setup_for_bitwarden">Passwords. Choose a self-hosted server, enter the address below, then make your own account. Its master password is yours alone and can\'t be reset.</string>
-    <string name="setup_for_homeassistant">Home control beyond scenes. Sign in with the household password.</string>
-    <string name="setup_for_music_assistant">Music on this phone and the house\'s speakers. Sign in with the household password.</string>
-    <string name="setup_for_immich">Backs up this phone\'s photos. Sign in with the household password.</string>
+    <string name="setup_for_homeassistant">Home control beyond scenes. Paste the server address as it is, with http:// and no port. Your account is ready: sign in as shown with the household password, with no need to sign up.</string>
+    <string name="setup_for_music_assistant">Music on this phone and the house\'s speakers. Paste the server address as it is, with http:// and no port. Your account is ready: sign in as shown with the household password, with no need to sign up.</string>
+    <string name="setup_for_immich">Backs up this phone\'s photos. Paste the server address as it is, with http:// and no port. Your account is ready: sign in as shown with the household password, with no need to sign up.</string>
     <string name="setup_passwords_off">Turn on Passwords in Settings first.</string>
 
     <!-- Share to Nexiom -->
