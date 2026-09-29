@@ -3,7 +3,11 @@ package io.github.superthom196.nexiom.ui
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
+import android.view.View
+import android.view.ViewGroup
+import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -11,7 +15,9 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView as AndroidWebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -27,6 +33,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import io.github.superthom196.nexiom.WebPage
 import io.github.superthom196.nexiom.api.NexiomApi
 import io.github.superthom196.nexiom.resources.Res
@@ -38,11 +46,16 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = BackHandler(enabled, onBack)
 
+/** A video the page has made fullscreen: the WebView's own view for it, and how to tell the page it's over. */
+private class Fullscreen(val view: View, val callback: WebChromeClient.CustomViewCallback)
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 actual fun WebView(page: WebPage, onClose: () -> Unit, modifier: Modifier) {
     val context = LocalContext.current
+    val activity = LocalActivity.current
     var failed by remember(page) { mutableStateOf(false) }
+    var fullscreen by remember(page) { mutableStateOf<Fullscreen?>(null) }
 
     // A file input on the page (the Files page's upload) asks the phone's own picker.
     var pendingFiles by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
@@ -92,12 +105,28 @@ actual fun WebView(page: WebPage, onClose: () -> Unit, modifier: Modifier) {
                         false
                     }
                 }
+
+                // A video's fullscreen button, or the page's requestFullscreen().
+                override fun onShowCustomView(view: View, callback: CustomViewCallback) {
+                    if (fullscreen != null || activity == null) {
+                        callback.onCustomViewHidden()
+                        return
+                    }
+                    fullscreen = Fullscreen(view, callback)
+                }
+
+                override fun onHideCustomView() {
+                    fullscreen = null
+                }
             }
             loadUrl(page.url, page.headers)
         }
     }
     DisposableEffect(webView) {
         onDispose {
+            // Closed while a video is fullscreen: tell the page, so it doesn't wait for a view that's gone.
+            fullscreen?.callback?.onCustomViewHidden()
+            fullscreen = null
             CookieManager.getInstance().flush()
             webView.destroy()
         }
@@ -105,6 +134,43 @@ actual fun WebView(page: WebPage, onClose: () -> Unit, modifier: Modifier) {
 
     BackHandler {
         if (webView.canGoBack()) webView.goBack() else onClose()
+    }
+    // After the one above, so it's asked first: Back leaves fullscreen and nothing else.
+    BackHandler(enabled = fullscreen != null) {
+        fullscreen?.callback?.onCustomViewHidden()
+        fullscreen = null
+    }
+
+    // The video goes over the whole window, above the X bar, with the system bars hidden
+    // and the space around the camera used. All of it comes back when it ends, however it ends.
+    val shown = fullscreen
+    if (shown != null && activity != null) {
+        DisposableEffect(shown) {
+            val window = activity.window
+            val decor = window.decorView as ViewGroup
+            val frame = FrameLayout(activity).apply {
+                setBackgroundColor(Color.BLACK)
+                addView(shown.view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            }
+            decor.addView(frame, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+
+            val bars = WindowInsetsControllerCompat(window, decor)
+            val barsBehavior = bars.systemBarsBehavior
+            val cutoutMode = window.attributes.layoutInDisplayCutoutMode
+            bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            bars.hide(WindowInsetsCompat.Type.systemBars())
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+
+            onDispose {
+                frame.removeView(shown.view)
+                decor.removeView(frame)
+                bars.show(WindowInsetsCompat.Type.systemBars())
+                bars.systemBarsBehavior = barsBehavior
+                window.attributes = window.attributes.apply { layoutInDisplayCutoutMode = cutoutMode }
+            }
+        }
     }
 
     Box(modifier) {
