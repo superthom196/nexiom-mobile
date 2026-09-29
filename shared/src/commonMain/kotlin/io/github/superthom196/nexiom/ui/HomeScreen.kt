@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +68,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -110,6 +113,13 @@ import org.jetbrains.compose.resources.stringResource
 /** A ring turns red at 90% full, as on the web launcher. */
 private const val FULL = 0.9f
 
+/** How long the gear is held before it opens Admin instead of Settings. */
+private const val SECRET_HOLD_MS = 5_000L
+
+private fun secretHold(base: ViewConfiguration) = object : ViewConfiguration by base {
+    override val longPressTimeoutMillis = SECRET_HOLD_MS
+}
+
 /** The household's front door: what needs attention, the status strip, the tiles and the rings, live. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,22 +150,25 @@ fun HomeScreen(model: AppModel) {
                     }
                 },
                 actions = {
-                    // A long press is nexiom0's secret way into Admin; other boxes have no admin login.
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .combinedClickable(
-                                role = Role.Button,
-                                onLongClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    model.openWeb(adminTitle, "/admin")
-                                },
-                                onClick = { model.openWeb(settingsTitle, "/settings") },
-                            ),
-                    ) {
-                        Icon(Icons.Rounded.Settings, contentDescription = settingsTitle)
+                    // Holding it for five seconds is nexiom0's secret way into Admin (other boxes have no
+                    // admin login); a firm press shorter than that still opens Settings.
+                    CompositionLocalProvider(LocalViewConfiguration provides secretHold(LocalViewConfiguration.current)) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .combinedClickable(
+                                    role = Role.Button,
+                                    onLongClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        model.openWeb(adminTitle, "/admin")
+                                    },
+                                    onClick = { model.openWeb(settingsTitle, "/settings") },
+                                ),
+                        ) {
+                            Icon(Icons.Rounded.Settings, contentDescription = settingsTitle)
+                        }
                     }
                     Box {
                         IconButton(onClick = { menu = true }) {
