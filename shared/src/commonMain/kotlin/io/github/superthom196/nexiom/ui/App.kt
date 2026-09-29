@@ -1,23 +1,29 @@
 package io.github.superthom196.nexiom.ui
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.superthom196.nexiom.AppModel
@@ -51,25 +57,25 @@ fun App(platform: Platform) {
 
 /**
  * Settings, Files and the services' web pages, inside the app and already signed in.
- * The page gets the whole screen; a small see-through X in the corner closes it.
+ * A slim bar with just an X keeps the page's own corner buttons clear.
  */
 @Composable
 private fun WebScreen(page: WebPage, onClose: () -> Unit) {
-    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-        WebView(page, onClose, Modifier.fillMaxSize())
-        IconButton(
-            onClick = onClose,
-            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(36.dp),
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = Color.Black.copy(alpha = 0.35f),
-                contentColor = Color.White,
-            ),
-        ) {
-            Icon(
-                Icons.Rounded.Close,
-                contentDescription = stringResource(Res.string.close) + " " + page.title,
-                modifier = Modifier.size(20.dp),
-            )
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+        // Not an IconButton: that pads itself to 48dp tall. This is 24dp, and wide to be easy to hit.
+        // The space below sets the X off from the page, since the status bar above looks part of the bar.
+        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp).height(24.dp), horizontalArrangement = Arrangement.End) {
+            Box(
+                Modifier.fillMaxHeight().width(56.dp).clickable(role = Role.Button, onClick = onClose),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = stringResource(Res.string.close) + " " + page.title,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
+        WebView(page, onClose, Modifier.weight(1f).fillMaxWidth())
     }
 }

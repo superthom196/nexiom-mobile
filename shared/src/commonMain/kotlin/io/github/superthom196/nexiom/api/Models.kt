@@ -42,6 +42,10 @@ data class Status(val services: ServiceCounts? = null, val storage: Int? = null,
 @Serializable
 data class Ring(val used: Long, val total: Long, val detail: String = "") {
     val fraction: Float get() = if (total > 0) (used.toFloat() / total).coerceIn(0f, 1f) else 0f
+
+    /** `detail` with GB to the nearest whole GB ("118.3 GB / 256.1 GB" -> "118 GB / 256 GB"), so it fits. */
+    val wholeGbDetail: String
+        get() = Regex("""(\d+\.\d+) GB""").replace(detail) { "${kotlin.math.round(it.groupValues[1].toDouble()).toLong()} GB" }
 }
 
 /** `cpu` is 0–100. */

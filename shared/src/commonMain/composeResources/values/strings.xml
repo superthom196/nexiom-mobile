@@ -35,12 +35,12 @@
     <string name="attention_title">Something needs attention</string>
     <string name="attention_more">%1$s and %2$d more</string>
     <string name="status_services">%1$d of %2$d services running</string>
-    <string name="status_storage">Storage %1$d%% full</string>
+    <string name="status_storage">Storage %1$d% full</string>
     <string name="status_blocked">%1$s ads blocked in 24 hours</string>
     <string name="ring_cpu">CPU</string>
     <string name="ring_ram">RAM</string>
     <string name="ring_disk">Disk</string>
-    <string name="percent">%1$d%%</string>
+    <string name="percent">%1$d%</string>
 
     <!-- Can't reach -->
     <string name="unreachable_title">Can\'t reach your Nexiom</string>

@@ -352,7 +352,7 @@ private fun Rings(cpu: Double?, ram: Ring?, disk: Ring?, modifier: Modifier = Mo
         val cell = Modifier.weight(1f)
         cpu?.let { RingCard(stringResource(Res.string.ring_cpu), (it / 100).toFloat(), "", cell) }
         ram?.let { RingCard(stringResource(Res.string.ring_ram), it.fraction, it.detail, cell) }
-        disk?.let { RingCard(stringResource(Res.string.ring_disk), it.fraction, it.detail, cell) }
+        disk?.let { RingCard(stringResource(Res.string.ring_disk), it.fraction, it.wholeGbDetail, cell) }
     }
 }
 
