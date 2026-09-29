@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,12 +58,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -77,6 +82,7 @@ import io.github.superthom196.nexiom.api.Stats
 import io.github.superthom196.nexiom.api.Status
 import io.github.superthom196.nexiom.api.Tile
 import io.github.superthom196.nexiom.resources.Res
+import io.github.superthom196.nexiom.resources.admin
 import io.github.superthom196.nexiom.resources.attention_more
 import io.github.superthom196.nexiom.resources.attention_title
 import io.github.superthom196.nexiom.resources.logo
@@ -119,6 +125,8 @@ fun HomeScreen(model: AppModel) {
         onPauseOrDispose {}
     }
     val settingsTitle = stringResource(Res.string.settings)
+    val adminTitle = stringResource(Res.string.admin)
+    val haptics = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -132,7 +140,21 @@ fun HomeScreen(model: AppModel) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = { model.openWeb(settingsTitle, "/settings") }) {
+                    // A long press is nexiom0's secret way into Admin; other boxes have no admin login.
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .combinedClickable(
+                                role = Role.Button,
+                                onLongClick = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    model.openWeb(adminTitle, "/admin")
+                                },
+                                onClick = { model.openWeb(settingsTitle, "/settings") },
+                            ),
+                    ) {
                         Icon(Icons.Rounded.Settings, contentDescription = settingsTitle)
                     }
                     Box {

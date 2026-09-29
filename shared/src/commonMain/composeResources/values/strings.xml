@@ -30,6 +30,7 @@
 
     <!-- Dashboard -->
     <string name="settings">Settings</string>
+    <string name="admin">Admin</string>
     <string name="more_options">More options</string>
     <string name="sign_out">Sign out</string>
     <string name="attention_title">Something needs attention</string>
