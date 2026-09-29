@@ -2,6 +2,7 @@ package io.github.superthom196.nexiom.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,12 +12,14 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -60,7 +63,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -70,31 +72,34 @@ import io.github.superthom196.nexiom.AppModel
 import io.github.superthom196.nexiom.HomeState
 import io.github.superthom196.nexiom.api.Attention
 import io.github.superthom196.nexiom.api.Dashboard
-import io.github.superthom196.nexiom.api.Ring
 import io.github.superthom196.nexiom.api.Section
+import io.github.superthom196.nexiom.api.Stats
 import io.github.superthom196.nexiom.api.Status
 import io.github.superthom196.nexiom.api.Tile
 import io.github.superthom196.nexiom.resources.Res
 import io.github.superthom196.nexiom.resources.attention_more
 import io.github.superthom196.nexiom.resources.attention_title
+import io.github.superthom196.nexiom.resources.logo
 import io.github.superthom196.nexiom.resources.more_options
+import io.github.superthom196.nexiom.resources.nexiom
 import io.github.superthom196.nexiom.resources.percent
 import io.github.superthom196.nexiom.resources.retry
 import io.github.superthom196.nexiom.resources.ring_cpu
 import io.github.superthom196.nexiom.resources.ring_disk
 import io.github.superthom196.nexiom.resources.ring_ram
+import io.github.superthom196.nexiom.resources.ring_storage
 import io.github.superthom196.nexiom.resources.settings
 import io.github.superthom196.nexiom.resources.setup_title
 import io.github.superthom196.nexiom.resources.sign_out
 import io.github.superthom196.nexiom.resources.status_blocked
 import io.github.superthom196.nexiom.resources.status_services
-import io.github.superthom196.nexiom.resources.status_storage
 import io.github.superthom196.nexiom.resources.unreachable_body
 import io.github.superthom196.nexiom.resources.unreachable_title
 import io.github.superthom196.nexiom.resources.wrong_box_body
 import io.github.superthom196.nexiom.resources.wrong_box_title
-import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 /** A ring turns red at 90% full, as on the web launcher. */
 private const val FULL = 0.9f
@@ -119,7 +124,13 @@ fun HomeScreen(model: AppModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(model.household, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(painterResource(Res.drawable.logo), contentDescription = null, modifier = Modifier.size(28.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(stringResource(Res.string.nexiom))
+                    }
+                },
                 actions = {
                     IconButton(onClick = { model.openWeb(settingsTitle, "/settings") }) {
                         Icon(Icons.Rounded.Settings, contentDescription = settingsTitle)
@@ -196,21 +207,15 @@ private fun Dashboard(dashboard: Dashboard, model: AppModel, modifier: Modifier)
             item(key = "setup") { SetupCard(setupDone, model.setupApps.size, onClick = model::openSetup) }
         }
         item(key = "scenes") { ScenesBlock(model) }
-        item(key = "status") { StatusStrip(dashboard.status) }
         dashboard.sections.forEach { section ->
             item(key = "section:${section.key}") { SectionHeader(section) }
             items(section.tiles, key = { "tile:${section.key}:${it.id}" }) { tile ->
                 TileRow(tile, onClick = { model.openTile(tile) })
             }
         }
-        item(key = "rings") {
-            Rings(
-                cpu = dashboard.stats.cpu,
-                ram = dashboard.stats.ram,
-                disk = dashboard.stats.disk,
-                modifier = Modifier.padding(top = 12.dp),
-            )
-        }
+        // The box's own health at the bottom, as on the web launcher: the rings, then the strip.
+        item(key = "rings") { Rings(dashboard.stats, Modifier.padding(top = 12.dp)) }
+        item(key = "status") { StatusStrip(dashboard.status) }
     }
 
     if (showAttention) {
@@ -278,13 +283,6 @@ private fun StatusStrip(status: Status) {
                 text = stringResource(Res.string.status_services, s.running, s.total),
             )
         }
-        status.storage?.let { pct ->
-            StatusPill(
-                icon = Icons.Rounded.Storage,
-                tint = if (pct >= FULL * 100) colors.danger else colors.muted,
-                text = stringResource(Res.string.status_storage, pct),
-            )
-        }
         status.blocked?.let { n ->
             StatusPill(Icons.Rounded.Shield, colors.muted, stringResource(Res.string.status_blocked, grouped(n)))
         }
@@ -345,19 +343,20 @@ private fun TileRow(tile: Tile, onClick: () -> Unit) {
     }
 }
 
-/** CPU, RAM and Disk, as at the bottom of the web launcher. Storage is in the status strip. */
+/** CPU, RAM, Disk, and Storage while a data drive is mounted, as at the bottom of the web launcher. */
 @Composable
-private fun Rings(cpu: Double?, ram: Ring?, disk: Ring?, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun Rings(stats: Stats, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val cell = Modifier.weight(1f)
-        cpu?.let { RingCard(stringResource(Res.string.ring_cpu), (it / 100).toFloat(), "", cell) }
-        ram?.let { RingCard(stringResource(Res.string.ring_ram), it.fraction, it.detail, cell) }
-        disk?.let { RingCard(stringResource(Res.string.ring_disk), it.fraction, it.wholeGbDetail, cell) }
+        stats.cpu?.let { RingCard(stringResource(Res.string.ring_cpu), (it / 100).toFloat(), cell) }
+        stats.ram?.let { RingCard(stringResource(Res.string.ring_ram), it.fraction, cell) }
+        stats.disk?.let { RingCard(stringResource(Res.string.ring_disk), it.fraction, cell) }
+        stats.storage?.let { RingCard(stringResource(Res.string.ring_storage), it.fraction, cell) }
     }
 }
 
 @Composable
-private fun RingCard(label: String, fraction: Float, detail: String, modifier: Modifier) {
+private fun RingCard(label: String, fraction: Float, modifier: Modifier) {
     val colors = LocalNexiomColors.current
     val fill = if (fraction >= FULL) colors.danger else MaterialTheme.colorScheme.primary
     Surface(
@@ -366,8 +365,9 @@ private fun RingCard(label: String, fraction: Float, detail: String, modifier: M
         border = BorderStroke(1.dp, colors.border),
         modifier = modifier,
     ) {
-        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
+        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            // As wide as the card allows, up to 72dp: four across a phone make them a little smaller.
+            Box(Modifier.widthIn(max = 72.dp).fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
                     val stroke = 7.dp.toPx()
                     val inset = stroke / 2
@@ -389,14 +389,7 @@ private fun RingCard(label: String, fraction: Float, detail: String, modifier: M
                 )
             }
             Spacer(Modifier.height(6.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge)
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
     }
 }

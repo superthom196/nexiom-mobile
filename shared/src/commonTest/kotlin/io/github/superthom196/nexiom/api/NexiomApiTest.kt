@@ -41,13 +41,6 @@ class NexiomApiTest {
     }
 
     @Test
-    fun diskTextIsInWholeGigabytes() {
-        assertEquals("118 GB / 256 GB", Ring(1, 2, "118.3 GB / 256.1 GB").wholeGbDetail)
-        assertEquals("12 GB / 32 GB", Ring(1, 2, "12 GB / 32 GB").wholeGbDetail)
-        assertEquals("900 MB / 2 GB", Ring(1, 2, "900 MB / 1.5 GB").wholeGbDetail)
-    }
-
-    @Test
     fun callsCarryTheToken() = runTest {
         api { json(Answers.dashboard()) }.dashboard("tok")
 
